@@ -1,9 +1,10 @@
 # Date: 16-03-2026
 # Author: Sachi(u3277899)
 
+# Acknowledged these projects
+# https://github.com/G20Michu/RdLib
 # https://github.com/valeriofantozzi/Ai-Thinker-RD-03-ESP32/blob/main/ESP32_RD03D/ESP32_RD03D.ino
 # https://github.com/javier-fg/Arduino_RD-03D
-# https://github.com/G20Michu/RdLib
 
 import serial
 import math
