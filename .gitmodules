@@ -1,0 +1,3 @@
+[submodule "AWR1843_Read_Data"]
+	path = AWR1843_Read_Data
+	url = https://github.com/ibaiGorordo/AWR1843-Read-Data-Python-MMWAVE-SDK-3-.git
