@@ -253,7 +253,7 @@ class RD03Protocol:
 if __name__ == "__main__":
     # Initialize protocol handler (adjust port name as needed)
     protocol = RD03Protocol(
-        "COM6", enable_plot=True)  # Enable plotting
+        "COM3", enable_plot=True)  # Enable plotting
 
     protocol.set_multi_mode()
     try:
