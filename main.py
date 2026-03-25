@@ -1,5 +1,6 @@
 import threading
 import time
+import numpy as np
 
 from AWR1843_Read_Data import readData_AWR1843 as radar
 
@@ -13,12 +14,12 @@ class RadarReading:
         while not self.stop_event.is_set():
             print(f"Test updateRadar")
             radar.updateFromMain()
-            time.sleep(0.05)
+            time.sleep(0.1)
 
     def dataProcess(self):
         while not self.stop_event.is_set():
-            print(f"Test dict={radar.getData()}")
-            time.sleep(0.5)
+            print(f"Test dict####={radar.getData()}")
+            time.sleep(0.05)
 
     def main(self):
         radar.initRadar()
@@ -28,15 +29,17 @@ class RadarReading:
         processingThread = threading.Thread(target=self.dataProcess)
 
         # Start threads
-        radarThread.start()
-        processingThread.start()
+        # radarThread.start()
+        # processingThread.start()
 
         print("Threads started. Press Ctrl+C to stop.")
 
         # Keep main thread alive
         try:
             while not self.stop_event.is_set():
-                time.sleep(1)
+                radar.updateFromMain()
+                print(f"Test dict####={radar.getData()}")
+                radar.updatePlot()
         except KeyboardInterrupt:
             print("\nStopping threads...")
             self.stop_event.set()
@@ -58,4 +61,5 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         rr.stop_event.set()
+        radar.closePortsAndPlot()
         print("\nClosing...")

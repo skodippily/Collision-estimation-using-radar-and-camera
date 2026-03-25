@@ -13,6 +13,7 @@ CLIport = {}
 Dataport = {}
 byteBuffer = np.zeros(2**15, dtype='uint8')
 byteBufferLength = 0
+filteredData = {}
 
 
 # ------------------------------------------------------------------
@@ -242,7 +243,6 @@ def readAndParseData18xx(Dataport, configParameters):
                 # Store the data in the detObj dictionary
                 detObj = {"numObj": numDetectedObj, "x": x,
                           "y": y, "z": z, "velocity": velocity}
-                print(f"Test dict={detObj}")
                 dataOK = 1
 
         # Remove already processed data
@@ -268,7 +268,7 @@ def readAndParseData18xx(Dataport, configParameters):
 
 def update():
     global app, win, p, s, dataOk
-    global detObj, frameData, currentIndex
+    global detObj, frameData, currentIndex, filteredData
 
     dataOk = 0
     global detObj
@@ -284,8 +284,9 @@ def update():
         x = -detObj["x"]
         y = detObj["y"]
 
-        s.setData(x, y)
-        app.processEvents()
+        # s.setData(x, y)
+        # app.processEvents()
+        filteredData = detObj
 
     return dataOk
 
@@ -316,6 +317,8 @@ def initRadar():
     # START QtAPPfor the plot
     app = QtWidgets.QApplication([])
 
+    print("Test instance", QtWidgets.QApplication.instance())
+
     # Set the plot
     pg.setConfigOption('background', 'w')
     win = pg.GraphicsLayoutWidget(title="2D scatter plot")
@@ -332,48 +335,51 @@ def initRadar():
     frameData = {}
     currentIndex = 0
 
+    return
 
-# -------------------------    MAIN   -----------------------------------------
-# Configurate the serial port
-CLIport, Dataport = serialConfig(configFileName)
 
-# Get the configuration parameters from the configuration file
-configParameters = parseConfigFile(configFileName)
+def getData():
+    global filteredData
+    return filteredData
 
-# START QtAPPfor the plot
-app = QtWidgets.QApplication([])
 
-# Set the plot
-pg.setConfigOption('background', 'w')
-win = pg.GraphicsLayoutWidget(title="2D scatter plot")
-p = win.addPlot()
-p.setXRange(-8, 8)
-p.setYRange(0, 8)
-p.setLabel('left', text='Y position (m)')
-p.setLabel('bottom', text='X position (m)')
-s = p.plot([], [], pen=None, symbol='o')
-win.show()
+def updatePlot():
+    global filteredData, app, s
+    if not "x" in filteredData:
+        return
+    if len(filteredData["x"]) > 0:
+        x = -filteredData["x"]
+        y = filteredData["y"]
+        s.setData(x, y)
+        app.processEvents()
 
-# Main loop
-detObj = {}
-frameData = {}
-currentIndex = 0
-while True:
-    try:
-        # Update the data and check if the data is okay
-        dataOk = update()
 
-        if dataOk:
-            # Store the current frame into frameData
-            frameData[currentIndex] = detObj
-            currentIndex += 1
+def closePortsAndPlot():
+    global CLIport, Dataport, win
 
-        time.sleep(0.05)  # Sampling frequency of 30 Hz
+    CLIport.write(('sensorStop\n').encode())
+    CLIport.close()
+    Dataport.close()
+    win.close()
 
-    # Stop the program and close everything if Ctrl + c is pressed
-    except KeyboardInterrupt:
-        CLIport.write(('sensorStop\n').encode())
-        CLIport.close()
-        Dataport.close()
-        win.close()
-        break
+
+if __name__ == "__main__":
+    initRadar()
+    while True:
+        try:
+            # Update the data and check if the data is okay
+            dataOk = update()
+
+            if dataOk:
+                # Store the current frame into frameData
+                frameData[currentIndex] = detObj
+                currentIndex += 1
+            print(f"Test main loop, {filteredData}")
+            updatePlot()
+
+            time.sleep(0.05)  # Sampling frequency of 30 Hz
+
+        # Stop the program and close everything if Ctrl + c is pressed
+        except KeyboardInterrupt:
+            closePortsAndPlot()
+            break
