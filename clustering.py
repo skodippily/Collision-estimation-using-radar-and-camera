@@ -9,9 +9,7 @@ nsamples = 50
 plt.ion()  # Turn on interactive mode
 fig, ax = plt.subplots(figsize=(10, 6))
 random_colors = np.random.rand(nsamples, 3)
-tempX = []
-tempY = []
-ax.scatter(tempX, tempY, s=40, c=random_colors[0])
+sc = ax.scatter([], [], s=40)
 
 
 def plot_init():
@@ -190,15 +188,34 @@ def merge_points_xy(points, x_thresh=0.5, y_thresh=0.5):
 
 
 def plot_update(clusters):
-    ax.clear()
-    plot_init()
-    for i, (label, points) in enumerate(clusters.items()):
+    all_points = []
+    colors = []
+
+    for label, points in clusters.items():
         points = np.array(points)
+
         x = points[:, 0]
         y = points[:, 1]
-        # creating new scatter chart with updated data
-        ax.scatter(x, y, s=40, c=random_colors[i])
-    plt.pause(0.1)
+
+        pts = np.column_stack((x, y))
+        all_points.append(pts)
+
+        # assign same color for all points in this cluster
+        colors.extend([label] * len(pts))
+
+    # Combine all clusters into one array
+    all_points = np.vstack(all_points)
+
+    # Update positions
+    sc.set_offsets(all_points)
+
+    # Update colors (IMPORTANT)
+    sc.set_array(np.array(colors))
+    sc.set_cmap('tab10')   # nice distinct colors
+
+    fig.canvas.draw_idle()
+    fig.canvas.flush_events()
+    plt.pause(0.05)
 
 
 # Your data dictionary
@@ -238,6 +255,8 @@ test_datas = [{
     'z': np.array([0., 0., 0., 0., 0.], dtype=np.float32),
     'velocity': np.array([0.,  0.,  0.,  0., -0.12173257], dtype=np.float32)}
 ]
+
+plot_init()
 
 for test_data in test_datas:
     clusters = dbscan_clustering(test_data, weight=0.8)

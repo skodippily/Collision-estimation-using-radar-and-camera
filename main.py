@@ -12,7 +12,6 @@ class RadarReading:
 
     def upateRadarData(self):
         while not self.stop_event.is_set():
-            print(f"Test updateRadar")
             radar.updateFromMain()
             time.sleep(0.1)
 
@@ -63,3 +62,6 @@ if __name__ == "__main__":
         rr.stop_event.set()
         radar.closePortsAndPlot()
         print("\nClosing...")
+
+
+
