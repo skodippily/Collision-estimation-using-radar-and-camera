@@ -5,12 +5,6 @@ from sklearn.cluster import DBSCAN
 import numpy as np
 import matplotlib.pyplot as plt
 
-nsamples = 50
-plt.ion()  # Turn on interactive mode
-fig, ax = plt.subplots(figsize=(10, 6))
-random_colors = np.random.rand(nsamples, 3)
-sc = ax.scatter([], [], s=40)
-
 
 def plot_init():
     ax.set_xlabel("X")
@@ -146,7 +140,7 @@ def dbscan_clustering(filteredData, weight=0.8):
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
     # Step 3: Apply DBSCAN
-    db = DBSCAN(eps=weight, min_samples=1)  # tune eps based on your data
+    db = DBSCAN(eps=weight, min_samples=2)  # tune eps based on your data
     labels = db.fit_predict(X_scaled)
     # Step 5: Group points by cluster
     clusters = {}
@@ -218,51 +212,58 @@ def plot_update(clusters):
     plt.pause(0.05)
 
 
-# Your data dictionary
-test_datas = [{
-    'numObj': np.int64(7),
-    'x': np.array([0.22087024, -0.07362341,  0.2399578, -2.2332435,  2.891764, 3.2639713, -1.066176], dtype=np.float32),
-    'y': np.array([0.75361675, 0.7818577, 0.9293525, 3.2825596, 3.324894, 6.7086244, 1.7002926], dtype=np.float32),
-    'z': np.array([0., 0., 0., 0., 0., 0., 0.], dtype=np.float32),
-    'velocity': np.array([0., 0., 0., 0., 0., 0., 0.60866284], dtype=np.float32)
-}, {
-    'numObj': np.int64(6),
-    'x': np.array([0.64897674,  0.20859967,  0.2399578, -2.2332435,  2.891764, 3.2639713], dtype=np.float32),
-    'y': np.array([0.35906807, 0.71174914, 0.9293525, 3.2825596, 3.324894, 6.7086244], dtype=np.float32),
-    'z': np.array([0., 0., 0., 0., 0., 0.], dtype=np.float32),
-    'velocity': np.array([0., 0., 0., 0., 0., 0.], dtype=np.float32)
-}, {
-    'numObj': np.int64(4),
-    'x': np.array([0.22905062, -2.2332435,  2.891764,  3.2639713], dtype=np.float32),
-    'y': np.array([0.8871092, 3.2825596, 3.324894, 6.7086244], dtype=np.float32),
-    'z': np.array([0., 0., 0., 0.], dtype=np.float32),
-    'velocity': np.array([0., 0., 0., 0.], dtype=np.float32)
-}, {
-    'numObj': np.int64(3),
-    'x': np.array([0.25768194, -2.2332435,  2.891764], dtype=np.float32),
-    'y': np.array([0.87921953, 3.2825596, 3.324894], dtype=np.float32),
-    'z': np.array([0., 0., 0.], dtype=np.float32),
-    'velocity': np.array([0., 0., 0.], dtype=np.float32)
-}, {
-    'numObj': np.int64(4),
-    'x': np.array([-2.2332435,  2.891764,  0.2399578, -0.94074357], dtype=np.float32),
-    'y': np.array([3.2825596, 3.324894, 0.9293525, 1.7727741], dtype=np.float32),
-    'z': np.array([0., 0., 0., 0.], dtype=np.float32),
-    'velocity': np.array([0., 0., 0.12173257, 0.85212797], dtype=np.float32)
-}, {'numObj': np.int64(5),
-    'x': np.array([0.22905062, -2.2332435,  2.891764,  3.2639713,  0.1567906], dtype=np.float32),
-    'y': np.array([0.8871092, 3.2825596, 3.324894, 6.7086244, 0.9911348], dtype=np.float32),
-    'z': np.array([0., 0., 0., 0., 0.], dtype=np.float32),
-    'velocity': np.array([0.,  0.,  0.,  0., -0.12173257], dtype=np.float32)}
-]
+if __name__ == "__main__":
 
-plot_init()
+    nsamples = 50
+    plt.ion()
+    fig, ax = plt.subplots(figsize=(10, 6))
+    random_colors = np.random.rand(nsamples, 3)
+    sc = ax.scatter([], [], s=40)
 
-for test_data in test_datas:
-    clusters = dbscan_clustering(test_data, weight=0.8)
+    test_datas = [{
+        'numObj': np.int64(7),
+        'x': np.array([0.22087024, -0.07362341,  0.2399578, -2.2332435,  2.891764, 3.2639713, -1.066176], dtype=np.float32),
+        'y': np.array([0.75361675, 0.7818577, 0.9293525, 3.2825596, 3.324894, 6.7086244, 1.7002926], dtype=np.float32),
+        'z': np.array([0., 0., 0., 0., 0., 0., 0.], dtype=np.float32),
+        'velocity': np.array([0., 0., 0., 0., 0., 0., 0.60866284], dtype=np.float32)
+    }, {
+        'numObj': np.int64(6),
+        'x': np.array([0.64897674,  0.20859967,  0.2399578, -2.2332435,  2.891764, 3.2639713], dtype=np.float32),
+        'y': np.array([0.35906807, 0.71174914, 0.9293525, 3.2825596, 3.324894, 6.7086244], dtype=np.float32),
+        'z': np.array([0., 0., 0., 0., 0., 0.], dtype=np.float32),
+        'velocity': np.array([0., 0., 0., 0., 0., 0.], dtype=np.float32)
+    }, {
+        'numObj': np.int64(4),
+        'x': np.array([0.22905062, -2.2332435,  2.891764,  3.2639713], dtype=np.float32),
+        'y': np.array([0.8871092, 3.2825596, 3.324894, 6.7086244], dtype=np.float32),
+        'z': np.array([0., 0., 0., 0.], dtype=np.float32),
+        'velocity': np.array([0., 0., 0., 0.], dtype=np.float32)
+    }, {
+        'numObj': np.int64(3),
+        'x': np.array([0.25768194, -2.2332435,  2.891764], dtype=np.float32),
+        'y': np.array([0.87921953, 3.2825596, 3.324894], dtype=np.float32),
+        'z': np.array([0., 0., 0.], dtype=np.float32),
+        'velocity': np.array([0., 0., 0.], dtype=np.float32)
+    }, {
+        'numObj': np.int64(4),
+        'x': np.array([-2.2332435,  2.891764,  0.2399578, -0.94074357], dtype=np.float32),
+        'y': np.array([3.2825596, 3.324894, 0.9293525, 1.7727741], dtype=np.float32),
+        'z': np.array([0., 0., 0., 0.], dtype=np.float32),
+        'velocity': np.array([0., 0., 0.12173257, 0.85212797], dtype=np.float32)
+    }, {'numObj': np.int64(5),
+        'x': np.array([0.22905062, -2.2332435,  2.891764,  3.2639713,  0.1567906], dtype=np.float32),
+        'y': np.array([0.8871092, 3.2825596, 3.324894, 6.7086244, 0.9911348], dtype=np.float32),
+        'z': np.array([0., 0., 0., 0., 0.], dtype=np.float32),
+        'velocity': np.array([0.,  0.,  0.,  0., -0.12173257], dtype=np.float32)}
+    ]
 
-    plot_update(clusters)
-    time.sleep(2)
+    plot_init()
 
-plt.ioff()  # Turn off interactive mode
-plt.show()
+    for test_data in test_datas:
+        clusters = dbscan_clustering(test_data, weight=0.8)
+
+        plot_update(clusters)
+        time.sleep(1)
+
+    plt.ioff()  # Turn off interactive mode
+    plt.show()
