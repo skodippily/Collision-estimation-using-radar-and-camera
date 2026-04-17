@@ -7,7 +7,7 @@ import serial.tools.list_ports as ports_list
 
 # Change the configuration file name
 # 'xwr18xx_best_velocity.cfg'
-configFileName = 'AWR1843_Read_Data/xwr18xx_best_range_res2.cfg'
+configFileName = 'AWR1843_Read_Data/xwr18xx_room_test.cfg'
 
 CLIport = {}
 Dataport = {}
@@ -279,7 +279,7 @@ def update():
     dataOk, frameNumber, detObj = readAndParseData18xx(
         Dataport, configParameters)
 
-    if dataOk and len(detObj["x"]) > 0:
+    if dataOk:
         # print(detObj)
         x = -detObj["x"]
         y = detObj["y"]
@@ -347,11 +347,10 @@ def updatePlot():
     global filteredData, app, s
     if not "x" in filteredData:
         return
-    if len(filteredData["x"]) > 0:
-        x = -filteredData["x"]
-        y = filteredData["y"]
-        s.setData(x, y)
-        app.processEvents()
+    x = -filteredData["x"]
+    y = filteredData["y"]
+    s.setData(x, y)
+    app.processEvents()
 
 
 def closePortsAndPlot():
@@ -374,7 +373,7 @@ if __name__ == "__main__":
                 # Store the current frame into frameData
                 frameData[currentIndex] = detObj
                 currentIndex += 1
-            print(f"Test main loop, {filteredData}")
+            # print(f"Test main loop, {filteredData}")
             updatePlot()
 
             time.sleep(0.05)  # Sampling frequency of 30 Hz

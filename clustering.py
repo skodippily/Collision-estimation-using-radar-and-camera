@@ -132,7 +132,8 @@ def radar_dbscan(det_obj_2d, weight, doppler_resolution, use_elevation=False):
     return clusters
 
 
-def dbscan_clustering(filteredData, weight=0.8):
+def dbscan_clustering(filteredData, weight=0.5, min_samples=2,
+                      algorithm='kd_tree', leaf_size=40, n_jobs=-1):
     # DBSCAN clustering for point cloud
     X = np.stack((filteredData['x'], filteredData['y'],
                   filteredData['z'], filteredData['velocity']), axis=1)
@@ -140,7 +141,8 @@ def dbscan_clustering(filteredData, weight=0.8):
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
     # Step 3: Apply DBSCAN
-    db = DBSCAN(eps=weight, min_samples=2)  # tune eps based on your data
+    db = DBSCAN(eps=weight, min_samples=min_samples, algorithm=algorithm,
+                leaf_size=leaf_size, n_jobs=n_jobs)  # tune eps based on your data
     labels = db.fit_predict(X_scaled)
     # Step 5: Group points by cluster
     clusters = {}

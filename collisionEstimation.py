@@ -28,7 +28,7 @@ def interval_1d(p0, v, pmin, pmax):
 def estimateCollision(x, y, vr=0, vx=0, vy=0):
     if vr != 0:
         vx, vy = radial_to_cartesian_velocity(x, y, vr)
-    print(f"Cartesian velocity: vx={vx:.2f}, vy={vy:.2f}")
+    # print(f"Cartesian velocity: vx={vx:.2f}, vy={vy:.2f}")
 
     # Box boundaries
     xmin, xmax = -x_margin, x_margin

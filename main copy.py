@@ -1,30 +1,38 @@
 import threading
 import time
 import numpy as np
-
+import time
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-import testData as td
+from main_testcode import getClosestCluster
 import clustering as cluster
 import objectTracking as ot
 import collisionEstimation as ce
 
 from AWR1843_Read_Data import readData_AWR1843 as radar
 
+start_time = 0
+angle_of_front = 45
+data_structure = []
+
 
 class RadarReading:
     def __init__(self):
         # Create a stop flag for safe shutdown
         self.stop_event = threading.Event()
-        self.start_time = 0
-        self.angle_of_front = 45
-        self.data_structure = []
+        self.start_time = start_time
+        self.angle_of_front = angle_of_front
+        self.data_structure = data_structure
 
     def upateRadarData(self):
         while not self.stop_event.is_set():
             radar.updateFromMain()
-            self.radar_data = radar.getData()
-            radar.updatePlot()
+            time.sleep(0.1)
+
+    def dataProcess(self):
+        while not self.stop_event.is_set():
+            print(f"Test dict####={radar.getData()}")
+            time.sleep(0.05)
 
     def measure_time(self, startbit):
         if startbit:
@@ -96,7 +104,7 @@ class RadarReading:
         for label, points in clusters.items():
             if label == -1:
                 if not remove_noise:
-                    # cleaned_clusters[label] = getClosestCluster(points)
+                    # cleaned_clusters[label] = self.getClosestCluster(points)
                     cleaned_clusters[label] = points
                 continue
             cleaned_clusters[label] = self.getClosestCluster(points)
@@ -140,73 +148,42 @@ class RadarReading:
             return "left"
 
     def main(self):
-        radar.initRadar()
+        radar.initRadar(True)
         time.sleep(2)
+        # Create threads
+        radarThread = threading.Thread(target=self.upateRadarData)
+        processingThread = threading.Thread(target=self.dataProcess)
+
+        # Start threads
+        # radarThread.start()
+        # processingThread.start()
 
         plt.ion()
         fig, ax = plt.subplots(figsize=(6, 6))
         tracker = ot.MultiObjectTracker()
         previous_frame = []
 
-        # Create threads
-        radarThread = threading.Thread(target=self.upateRadarData, daemon=True)
-
-        radar.updateFromMain()
-        self.radar_data = radar.getData()
-        # Start threads
-        radarThread.start()
-        # processingThread.start()
-        time.sleep(5)
+        print("Threads started. Press Ctrl+C to stop.")
 
         # Keep main thread alive
         try:
             while not self.stop_event.is_set():
-                # Perform clustering
-                if self.radar_data is None or len(self.radar_data['x']) == 0:
-                    continue
-                self.measure_time(startbit=True)  # Start timing
-                clusters = cluster.dbscan_clustering(
-                    self.radar_data, weight=0.5)
+                radar.updateFromMain()
+                print(f"Test dict####={radar.getData()}")
+                radar.updatePlot()
+                plt.pause(0.1)
+                # print(f"identified_clusters: {identified_clusters}")
 
-                # Clean clusters
-                cleaned_clusters = self.clean_clusters(
-                    clusters, remove_noise=False)
+            plt.ioff()
+            plt.show()
 
-                # identify matches
-                reform_clusters = self.clusters_reform(cleaned_clusters)
-                identified_clusters = ot.identify_clusters(
-                    tracker, reform_clusters)
-                matched_pairs = self.get_matched_pairs(
-                    identified_clusters, previous_frame)
-                previous_frame = identified_clusters
-                self.visualize_clusters(
-                    ax, cleaned_clusters, matched_pairs=matched_pairs)
-
-                data_structure = []
-                for label, point in identified_clusters.items():
-                    collision_time = ce.estimateCollision(
-                        point[0], point[1], vx=point[2], vy=point[3])
-                    # print(
-                    #     f"Estimated collision time for cluster {label}: {collision_time} seconds")
-                    data_structure.append({
-                        'id': label,
-                        'object': 'unknown',
-                        # Estimate distance from the origin
-                        'distance': np.sqrt(point[0]**2 + point[1]**2),
-                        # Estimate speed from velocity components
-                        'speed': np.sqrt(point[2]**2 + point[3]**2),
-                        'direction': self.get_direction(point[0], point[1]),
-                        'ttc': collision_time
-                    })
-
-                plt.pause(0.2)
-                clean_time = self.measure_time(startbit=False)
-                print(
-                    f"Tracking algorithm takes {clean_time:.2f} seconds to run.")
         except KeyboardInterrupt:
             print("\nStopping threads...")
             self.stop_event.set()
 
+        # Wait for threads to finish
+        radarThread.join()
+        processingThread.join()
         print("All threads closed safely.")
 
 
