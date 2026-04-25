@@ -7,7 +7,7 @@ import serial.tools.list_ports as ports_list
 
 # Change the configuration file name
 # 'xwr18xx_best_velocity.cfg'
-configFileName = 'AWR1843_Read_Data/xwr18xx_room_test.cfg'
+configFileName = 'AWR1843_Read_Data/awr1843_settings.cfg'
 
 CLIport = {}
 Dataport = {}
@@ -362,8 +362,17 @@ def closePortsAndPlot():
     win.close()
 
 
+def resetRadar():
+    global CLIport, Dataport, configFileName, configParameters
+
+    CLIport.write(b'sensorStop\n')
+    time.sleep(1)
+    CLIport.write(b'sensorStart 0\n')
+
+
 if __name__ == "__main__":
     initRadar()
+    resetRadar()
     while True:
         try:
             # Update the data and check if the data is okay

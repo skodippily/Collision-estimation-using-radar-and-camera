@@ -1,6 +1,7 @@
 import threading
 import time
 import numpy as np
+import cv2
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -10,21 +11,31 @@ import objectTracking as ot
 import collisionEstimation as ce
 
 from AWR1843_Read_Data import readData_AWR1843 as radar
+from Object_detection import objectDetection as od
 
 
 class RadarReading:
-    def __init__(self):
+    def __init__(self,
+                 start_time=0,
+                 angle_of_front=45,
+                 model="Object_detection/yolov8n.pt",
+                 source="JETSON"):
         # Create a stop flag for safe shutdown
         self.stop_event = threading.Event()
-        self.start_time = 0
-        self.angle_of_front = 45
+        self.start_time = start_time
+        self.angle_of_front = angle_of_front
         self.data_structure = []
+        self.model = model
+        self.source = source
 
     def upateRadarData(self):
         while not self.stop_event.is_set():
             radar.updateFromMain()
             self.radar_data = radar.getData()
-            radar.updatePlot()
+            # radar.updatePlot()
+
+    def runObjectDetection(self, odtracker):
+        odtracker.run()
 
     def measure_time(self, startbit):
         if startbit:
@@ -34,14 +45,7 @@ class RadarReading:
 
     # measure_time(startbit=True)  # Start timing
     # measure_time(startbit=False)
-
-    def visualize_clusters(self, ax, clusters, matched_pairs=[]):
-        """
-        Visualize clustered points with different colors.
-        """
-
-        ax.clear()
-
+    def init_plot(self, ax):
         ax.set_title("DBSCAN Clustering Visualization")
         ax.set_xlabel("X")
         ax.set_ylabel("Y")
@@ -49,35 +53,82 @@ class RadarReading:
         ax.set_ylim(0, 8)
         ax.grid(True)
 
+        self.scatter_plots = {}   # store scatter objects
+        self.line_plots = []      # store line objects
+
+    def visualize_clusters(self, ax, clusters, matched_pairs=[]):
+        """
+        Visualize clustered points with different colors.
+        """
+
         num_clusters = len(clusters)
         colors = mpl.colormaps['tab10'].resampled(max(num_clusters, 1))
 
+        # ---- Update scatter plots ----
         for label, points in clusters.items():
-            # print(f"Cluster label: {label}, Points: {points}")
 
             if label == -1:
-                # Noise points
                 color = 'black'
-                label_name = 'Noise'
             else:
                 color = colors(label)
-                label_name = f'Cluster {label}'
 
-            if np.array(points).ndim == 2:
-                x = np.array([a[0] for a in points])
-                y = np.array([a[1] for a in points])
+            points = np.array(points)
+
+            if points.ndim == 2:
+                xy = points[:, :2]
             else:
-                x = points[0]
-                y = points[1]
+                xy = np.array([[points[0], points[1]]])
 
-            ax.scatter(x, y,
-                       c=[color],
-                       label=label_name,
-                       s=40)
-        if matched_pairs is not None and matched_pairs != []:
+            if label not in self.scatter_plots:
+                # Create once
+                sc = ax.scatter(xy[:, 0], xy[:, 1], c=[color], s=40)
+                self.scatter_plots[label] = sc
+            else:
+                # Update existing scatter
+                self.scatter_plots[label].set_offsets(xy)
+
+        # ---- Remove unused clusters ----
+        existing_labels = set(self.scatter_plots.keys())
+        new_labels = set(clusters.keys())
+
+        for label in existing_labels - new_labels:
+            self.scatter_plots[label].remove()
+            del self.scatter_plots[label]
+
+        # ---- Update lines ----
+        for line in self.line_plots:
+            line.remove()
+        self.line_plots.clear()
+
+        if matched_pairs:
             for (x1, y1), (x2, y2) in matched_pairs:
-                ax.plot([x1, x2], [y1, y2], color='green', linewidth=1.2)
-                ax.scatter(x2, y2, marker='v', s=40)
+                line, = ax.plot([x1, x2], [y1, y2],
+                                color='green', linewidth=1.2)
+                self.line_plots.append(line)
+
+        plt.pause(0.1)
+
+    def crop_radar_data(self, radar_data, z_range=(-1, 1), flatten=False):
+        # Keep only points inside z range
+        mask = (
+            (radar_data['z'] >= z_range[0]) &
+            (radar_data['z'] <= z_range[1])
+        )
+
+        radar_data = {
+            'x': radar_data['x'][mask],
+            'y': radar_data['y'][mask],
+            'z': radar_data['z'][mask],
+            'velocity': radar_data['velocity'][mask],
+        }
+        # Update number of objects
+        radar_data['numObj'] = np.int64(np.sum(mask))
+
+        # Optional flatten
+        if flatten:
+            radar_data['z'] = np.zeros_like(radar_data['z'])
+
+        return radar_data
 
     def getClosestCluster(self, points):
         """Get the closest cluster to the origin."""
@@ -141,32 +192,47 @@ class RadarReading:
 
     def main(self):
         radar.initRadar()
+        self.odtracker = od.YOLOTracker(
+            model_path="yolov8n.pt",
+            source=0,  # or "JETSON"
+            confidence=0.7
+        )
         time.sleep(2)
 
         plt.ion()
+        plt.rcParams['figure.raise_window'] = False
         fig, ax = plt.subplots(figsize=(6, 6))
+        self.init_plot(ax)
+        plt.show()
         tracker = ot.MultiObjectTracker()
         previous_frame = []
 
         # Create threads
         radarThread = threading.Thread(target=self.upateRadarData, daemon=True)
+        objectDetection = threading.Thread(
+            target=self.runObjectDetection, args=(self.odtracker,), daemon=True)
 
         radar.updateFromMain()
         self.radar_data = radar.getData()
         # Start threads
         radarThread.start()
-        # processingThread.start()
+        objectDetection.start()
         time.sleep(5)
 
         # Keep main thread alive
         try:
             while not self.stop_event.is_set():
+                # Radar data processing...
                 # Perform clustering
                 if self.radar_data is None or len(self.radar_data['x']) == 0:
                     continue
                 self.measure_time(startbit=True)  # Start timing
+
+                cropped_radar = self.crop_radar_data(self.radar_data)
+                if cropped_radar['numObj'] == 0:
+                    continue
                 clusters = cluster.dbscan_clustering(
-                    self.radar_data, weight=0.5)
+                    cropped_radar, weight=0.5)
 
                 # Clean clusters
                 cleaned_clusters = self.clean_clusters(
@@ -199,10 +265,16 @@ class RadarReading:
                         'ttc': collision_time
                     })
 
-                plt.pause(0.2)
                 clean_time = self.measure_time(startbit=False)
                 print(
                     f"Tracking algorithm takes {clean_time:.2f} seconds to run.")
+
+                # Camera data processing...
+                results = self.odtracker.getResults()
+                if results is not None:
+                    for box in results.boxes:
+                        print(
+                            f"Detected object: {results.names[int(box.cls[0])]} with confidence {box.conf[0]:.2f}")
         except KeyboardInterrupt:
             print("\nStopping threads...")
             self.stop_event.set()
