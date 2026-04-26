@@ -167,6 +167,10 @@ def simulate_radar_data(Test_radar_data):
 
         # --- Collision estimation ---
         shared_state.data_structure.clear()
+        shared_state.data_structure = {
+            'radar': [],
+            'camera': []
+        }
 
         for label, point in identified_clusters.items():
             collision_time = ce.estimateCollision(
@@ -177,7 +181,7 @@ def simulate_radar_data(Test_radar_data):
                 f"Estimated collision time for cluster {label}: {collision_time} seconds"
             )
 
-            shared_state.data_structure.append(
+            shared_state.data_structure['radar'].append(
                 {
                     "id": int(label),
                     "object": "unknown",

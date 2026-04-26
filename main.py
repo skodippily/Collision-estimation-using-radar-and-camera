@@ -241,7 +241,10 @@ class RadarReading:
         # Keep main thread alive
         try:
             while not self.stop_event.is_set():
-                shared_state.data_structure = []
+                shared_state.data_structure = {
+                    'radar': [],
+                    'camera': []
+                }
                 if radarOn:
                     # Radar data processing...
                     # Perform clustering
@@ -274,7 +277,7 @@ class RadarReading:
                         point[0], point[1], vx=point[2], vy=point[3])
                     # print(
                     #     f"Estimated collision time for cluster {label}: {collision_time} seconds")
-                    shared_state.data_structure.append({
+                    shared_state.data_structure['radar'].append({
                         'id': label,
                         'object': 'unknown',
                         # Estimate distance from the origin
@@ -296,9 +299,9 @@ class RadarReading:
                         self.cameraFrame)
                     frame, results = self.odtracker.getResults(
                         self.cameraFrame)
-
                     if frame is None:
                         continue
+                    shared_state.data_structure['camera'] = results
                     cv2.imshow("Camera frame", frame)
         except KeyboardInterrupt:
             print("\nStopping threads...")
