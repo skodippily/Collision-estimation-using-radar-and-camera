@@ -37,7 +37,8 @@ class RadarReading:
             # radar.updatePlot()
 
     def runObjectDetection(self, odtracker):
-        odtracker.run()
+        while not self.stop_event.is_set():
+            self.cameraFrame = odtracker.getFrame()
 
     def measure_time(self, startbit):
         if startbit:
@@ -192,13 +193,15 @@ class RadarReading:
         if self.angle_of_front <= theta:
             return "left"
 
-    def main(self):
-        radar.initRadar()
-        self.odtracker = od.YOLOTracker(
-            model_path="yolov8n.pt",
-            source=0,  # or "JETSON"
-            confidence=0.7
-        )
+    def main(self, radarOn=True, cameraOn=True):
+        if radarOn:
+            radar.initRadar()
+        if cameraOn:
+            self.odtracker = od.YOLOTracker(
+                model_path=self.model,
+                source=self.source,  # or "JETSON"
+                confidence=0.7
+            )
 
         # Start FastAPI server in a background thread
         import os
@@ -226,43 +229,46 @@ class RadarReading:
         objectDetection = threading.Thread(
             target=self.runObjectDetection, args=(self.odtracker,), daemon=True)
 
-        radar.updateFromMain()
-        self.radar_data = radar.getData()
-        # Start threads
-        radarThread.start()
-        objectDetection.start()
+        if radarOn:
+            radar.updateFromMain()
+            self.radar_data = radar.getData()
+            # Start threads
+            radarThread.start()
+        if cameraOn:
+            objectDetection.start()
         time.sleep(5)
 
         # Keep main thread alive
         try:
             while not self.stop_event.is_set():
-                # Radar data processing...
-                # Perform clustering
-                if self.radar_data is None:
-                    continue
-                self.measure_time(startbit=True)  # Start timing
-
-                cropped_radar = self.crop_radar_data(self.radar_data)
-                if cropped_radar['numObj'] == 0:
-                    continue
-                clusters = cluster.dbscan_clustering(
-                    cropped_radar, weight=0.5)
-
-                # Clean clusters
-                cleaned_clusters = self.clean_clusters(
-                    clusters, remove_noise=False)
-
-                # identify matches
-                reform_clusters = self.clusters_reform(cleaned_clusters)
-                identified_clusters = ot.identify_clusters(
-                    tracker, reform_clusters)
-                matched_pairs = self.get_matched_pairs(
-                    identified_clusters, previous_frame)
-                previous_frame = identified_clusters
-                self.visualize_clusters(
-                    ax, cleaned_clusters, matched_pairs=matched_pairs)
-
                 shared_state.data_structure = []
+                if radarOn:
+                    # Radar data processing...
+                    # Perform clustering
+                    if self.radar_data is None:
+                        continue
+                    self.measure_time(startbit=True)  # Start timing
+
+                    cropped_radar = self.crop_radar_data(self.radar_data)
+                    if cropped_radar['numObj'] == 0:
+                        continue
+                    clusters = cluster.dbscan_clustering(
+                        cropped_radar, weight=0.5)
+
+                    # Clean clusters
+                    cleaned_clusters = self.clean_clusters(
+                        clusters, remove_noise=False)
+
+                    # identify matches
+                    reform_clusters = self.clusters_reform(cleaned_clusters)
+                    identified_clusters = ot.identify_clusters(
+                        tracker, reform_clusters)
+                    matched_pairs = self.get_matched_pairs(
+                        identified_clusters, previous_frame)
+                    previous_frame = identified_clusters
+                    self.visualize_clusters(
+                        ax, cleaned_clusters, matched_pairs=matched_pairs)
+
                 for label, point in identified_clusters.items():
                     collision_time = ce.estimateCollision(
                         point[0], point[1], vx=point[2], vy=point[3])
@@ -279,17 +285,21 @@ class RadarReading:
                         'ttc': collision_time
                     })
 
-                clean_time = self.measure_time(startbit=False)
-                print(
-                    f"Tracking algorithm takes {clean_time:.2f} seconds to run.")
+                    clean_time = self.measure_time(startbit=False)
+                    print(
+                        f"Tracking algorithm takes {clean_time:.2f} seconds to run.")
 
-                # Camera data processing...
-                results = self.odtracker.getResults()
-                if results is not None:
-                    print(f"Camera detected {results} objects.")
-                    for box in results['objects']:
-                        print(
-                            f"Detected object: {box['class']} with confidence {box['confidence']:.2f}")
+                if cameraOn:
+                    # Camera data processing...
+                    # cv2.imshow("Camera frame", self.cameraFrame)
+                    _, results = self.odtracker.process_frame(
+                        self.cameraFrame)
+                    frame, results = self.odtracker.getResults(
+                        self.cameraFrame)
+
+                    if frame is None:
+                        continue
+                    cv2.imshow("Camera frame", frame)
         except KeyboardInterrupt:
             print("\nStopping threads...")
             self.stop_event.set()
