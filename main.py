@@ -2,6 +2,7 @@ import threading
 import time
 import numpy as np
 import cv2
+import uvicorn
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -9,6 +10,7 @@ import testData as td
 import clustering as cluster
 import objectTracking as ot
 import collisionEstimation as ce
+import shared_state
 
 from AWR1843_Read_Data import readData_AWR1843 as radar
 from Object_detection import objectDetection as od
@@ -197,6 +199,18 @@ class RadarReading:
             source=0,  # or "JETSON"
             confidence=0.7
         )
+
+        # Start FastAPI server in a background thread
+        import os
+        os.environ["REAL_DATA_MODE"] = "1"
+        server_thread = threading.Thread(
+            target=uvicorn.run,
+            args=("app:app",),
+            kwargs={"host": "0.0.0.0", "port": 8000},
+            daemon=True
+        )
+        server_thread.start()
+
         time.sleep(2)
 
         plt.ion()
@@ -248,13 +262,13 @@ class RadarReading:
                 self.visualize_clusters(
                     ax, cleaned_clusters, matched_pairs=matched_pairs)
 
-                data_structure = []
+                shared_state.data_structure = []
                 for label, point in identified_clusters.items():
                     collision_time = ce.estimateCollision(
                         point[0], point[1], vx=point[2], vy=point[3])
                     # print(
                     #     f"Estimated collision time for cluster {label}: {collision_time} seconds")
-                    data_structure.append({
+                    shared_state.data_structure.append({
                         'id': label,
                         'object': 'unknown',
                         # Estimate distance from the origin

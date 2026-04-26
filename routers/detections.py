@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from main_testcode import data_structure
+import shared_state
 
 
 router = APIRouter()
@@ -7,4 +7,4 @@ router = APIRouter()
 
 @router.get("/detections")
 async def get_detections():
-    return {"success": True, "count": len(data_structure), "result": data_structure}
+    return {"success": True, "count": len(shared_state.data_structure), "result": shared_state.data_structure}

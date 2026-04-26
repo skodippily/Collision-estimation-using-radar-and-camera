@@ -8,11 +8,11 @@ import testData as td
 import clustering as cluster
 import objectTracking as ot
 import collisionEstimation as ce
+import shared_state
 
 
 start_time = 0
 angle_of_front = 45
-data_structure = []
 
 
 def measure_time(startbit):
@@ -21,6 +21,7 @@ def measure_time(startbit):
         start_time = time.time()
         return start_time
     return time.time() - start_time
+
 
 # measure_time(startbit=True)  # Start timing
 # measure_time(startbit=False)
@@ -41,18 +42,18 @@ def visualize_clusters(ax, clusters, matched_pairs=[]):
     ax.grid(True)
 
     num_clusters = len(clusters)
-    colors = mpl.colormaps['tab10'].resampled(max(num_clusters, 1))
+    colors = mpl.colormaps["tab10"].resampled(max(num_clusters, 1))
 
     for label, points in clusters.items():
         # print(f"Cluster label: {label}, Points: {points}")
 
         if label == -1:
             # Noise points
-            color = 'black'
-            label_name = 'Noise'
+            color = "black"
+            label_name = "Noise"
         else:
             color = colors(label)
-            label_name = f'Cluster {label}'
+            label_name = f"Cluster {label}"
 
         if np.array(points).ndim == 2:
             x = np.array([a[0] for a in points])
@@ -61,22 +62,19 @@ def visualize_clusters(ax, clusters, matched_pairs=[]):
             x = points[0]
             y = points[1]
 
-        ax.scatter(x, y,
-                   c=[color],
-                   label=label_name,
-                   s=40)
+        ax.scatter(x, y, c=[color], label=label_name, s=40)
     if matched_pairs is not None and matched_pairs != []:
         for (x1, y1), (x2, y2) in matched_pairs:
-            ax.plot([x1, x2], [y1, y2], color='green', linewidth=1.2)
-            ax.scatter(x2, y2, marker='v', s=40)
+            ax.plot([x1, x2], [y1, y2], color="green", linewidth=1.2)
+            ax.scatter(x2, y2, marker="v", s=40)
 
 
 def getClosestCluster(points):
     """Get the closest cluster to the origin."""
-    min_distance = float('inf')
+    min_distance = float("inf")
     closest_cluster = None
     for point in points:
-        distance = np.sqrt(point[0]**2 + point[1]**2)
+        distance = np.sqrt(point[0] ** 2 + point[1] ** 2)
         if distance < min_distance:
             min_distance = distance
             closest_cluster = point
@@ -101,7 +99,7 @@ def clusters_reform(clusters):
     reformatted_clusters = []
     for label, points in clusters.items():
         _points = points.copy()
-        if (np.array(_points).ndim == 1):
+        if np.array(_points).ndim == 1:
             # Remove z-axis if present
             reformatted_clusters.append(np.delete(_points, 2))
         else:
@@ -120,7 +118,8 @@ def get_matched_pairs(current_clusters, previous_clusters):
         for prevID, prevData in previous_clusters.items():
             if currID == prevID:
                 matched_pairs.append(
-                    [(prevData[0], prevData[1]), (currData[0], currData[1])])
+                    [(prevData[0], prevData[1]), (currData[0], currData[1])]
+                )
                 break
     return matched_pairs
 
@@ -137,78 +136,61 @@ def get_direction(x, y):
 
 
 def simulate_radar_data(Test_radar_data):
-    """Simulate radar data for testing."""
+    """Simulate radar data for testing (NO visualization)."""
 
     global data_structure
 
-    plt.ion()
-    fig, ax = plt.subplots(figsize=(6, 6))
     tracker = ot.MultiObjectTracker()
     previous_frame = []
 
     for radar_data in np.array(Test_radar_data):
 
-        # Perform clustering
-        measure_time(startbit=True)  # Start timing
+        # --- Clustering ---
+        measure_time(startbit=True)
         clusters = cluster.dbscan_clustering(radar_data, weight=0.8)
-        # visualize_clusters(ax, clusters)
         cluster_time = measure_time(startbit=False)
-        print(
-            f"Clustering algorithm takes {cluster_time:.2f} seconds to run.")
+        print(f"Clustering algorithm takes {cluster_time:.2f} seconds to run.")
 
-        # Clean clusters
-        measure_time(startbit=True)  # Start timing
+        # --- Cleaning ---
+        measure_time(startbit=True)
         cleaned_clusters = clean_clusters(clusters, remove_noise=False)
-        # print(f"Cleaned Clusters: {cleaned_clusters}")
         clean_time = measure_time(startbit=False)
         print(f"Cleaning algorithm takes {clean_time:.2f} seconds to run.")
-        # visualize_clusters(ax, cleaned_clusters)
 
-        # identify matches
-        measure_time(startbit=True)  # Start timing
+        # --- Tracking ---
+        measure_time(startbit=True)
         reform_clusters = clusters_reform(cleaned_clusters)
-        # print(f"Reformed Clusters: {reform_clusters}")
         identified_clusters = ot.identify_clusters(tracker, reform_clusters)
-        matched_pairs = get_matched_pairs(identified_clusters, previous_frame)
         previous_frame = identified_clusters
-        # print(f"Identified clusters: {identified_clusters}")
-        # print(f"Matched pairs: {matched_pairs}")
-        clean_time = measure_time(startbit=False)
-        print(f"Tracking algorithm takes {clean_time:.2f} seconds to run.")
-        visualize_clusters(ax, cleaned_clusters, matched_pairs=matched_pairs)
+        track_time = measure_time(startbit=False)
+        print(f"Tracking algorithm takes {track_time:.2f} seconds to run.")
 
-        # collision estimation
-        # data_structure = [{
-        #     'id': number,
-        #     'object': string (this is the object type from camera detection),
-        #     'distance': number,
-        #     'speed': number,
-        #     'direction': "left" | "front" | "right"
-        #     'ttc': number
-        # }]
-        data_structure = []
+        # --- Collision estimation ---
+        shared_state.data_structure.clear()
+
         for label, point in identified_clusters.items():
             collision_time = ce.estimateCollision(
-                point[0], point[1], vx=point[2], vy=point[3])
+                point[0], point[1], vx=point[2], vy=point[3]
+            )
+
             print(
-                f"Estimated collision time for cluster {label}: {collision_time} seconds")
-            data_structure.append({
-                'id': label,
-                'object': 'unknown',
-                # Estimate distance from the origin
-                'distance': np.sqrt(point[0]**2 + point[1]**2),
-                # Estimate speed from velocity components
-                'speed': np.sqrt(point[2]**2 + point[3]**2),
-                'direction': get_direction(point[0], point[1]),
-                'ttc': collision_time
-            })
+                f"Estimated collision time for cluster {label}: {collision_time} seconds"
+            )
 
-        plt.pause(0.05)
-        # print(f"identified_clusters: {identified_clusters}")
-        time.sleep(0.15)  # Simulate delay in receiving radar data
+            shared_state.data_structure.append(
+                {
+                    "id": int(label),
+                    "object": "unknown",
+                    "distance": float(np.sqrt(point[0] ** 2 + point[1] ** 2)),
+                    "speed": float(np.sqrt(point[2] ** 2 + point[3] ** 2)),
+                    "direction": get_direction(point[0], point[1]),
+                    "ttc": (
+                        float(collision_time) if collision_time is not None else None
+                    ),
+                }
+            )
 
-    plt.ioff()
-    plt.show()
+        time.sleep(0.15)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import threading
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,8 +25,10 @@ def create_app():
     app.include_router(detections.router, tags=["Detections"])
 
     @app.on_event("startup")
-    # thread is used to run the simulation background
+    # thread is used to run the simulation in background (dummy data, only when run standalone)
     def start_simulation():
+        if os.environ.get("REAL_DATA_MODE") == "1":
+            return  # Real data is provided by main.py; skip simulation
         thread = threading.Thread(
             target=simulate_radar_data, args=(td.Test_radar_data,), daemon=True
         )
@@ -38,3 +41,4 @@ app = create_app()
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    app = create_app()
