@@ -20,7 +20,7 @@ class RadarReading:
     def __init__(self,
                  start_time=0,
                  angle_of_front=45,
-                 model="Object_detection/yolov8n.pt",
+                 model="Object_detection/yolov8n.engine",
                  source="JETSON"):
         # Create a stop flag for safe shutdown
         self.stop_event = threading.Event()
@@ -238,7 +238,7 @@ class RadarReading:
             while not self.stop_event.is_set():
                 # Radar data processing...
                 # Perform clustering
-                if self.radar_data is None or len(self.radar_data['x']) == 0:
+                if self.radar_data is None:
                     continue
                 self.measure_time(startbit=True)  # Start timing
 
@@ -286,9 +286,10 @@ class RadarReading:
                 # Camera data processing...
                 results = self.odtracker.getResults()
                 if results is not None:
-                    for box in results.boxes:
+                    print(f"Camera detected {results} objects.")
+                    for box in results['objects']:
                         print(
-                            f"Detected object: {results.names[int(box.cls[0])]} with confidence {box.conf[0]:.2f}")
+                            f"Detected object: {box['class']} with confidence {box['confidence']:.2f}")
         except KeyboardInterrupt:
             print("\nStopping threads...")
             self.stop_event.set()
