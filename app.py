@@ -16,6 +16,7 @@ def create_app():
         CORSMiddleware,
         allow_origins=[
             "http://localhost:5173",
+            "http://localhost:5174",
         ],  # Who can call your API?
         allow_methods=["*"],  # What HTTP methods are allowed?
         allow_headers=["*"],  # What headers can be sent?

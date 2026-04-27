@@ -223,6 +223,10 @@ class RadarReading:
         plt.show()
         tracker = ot.MultiObjectTracker()
         previous_frame = []
+        shared_state.data_structure = {
+            'radar': [],
+            'camera': []
+        }
 
         # Create threads
         radarThread = threading.Thread(target=self.upateRadarData, daemon=True)
@@ -241,10 +245,6 @@ class RadarReading:
         # Keep main thread alive
         try:
             while not self.stop_event.is_set():
-                shared_state.data_structure = {
-                    'radar': [],
-                    'camera': []
-                }
                 if radarOn:
                     # Radar data processing...
                     # Perform clustering
@@ -273,6 +273,8 @@ class RadarReading:
                         ax, cleaned_clusters, matched_pairs=matched_pairs)
 
                 for label, point in identified_clusters.items():
+                    if point[0] <= 0.5 and point[1] == 0.5:
+                        continue  # Skip points that are too close to the origin
                     collision_time = ce.estimateCollision(
                         point[0], point[1], vx=point[2], vy=point[3])
                     # print(
